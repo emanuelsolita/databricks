@@ -25,7 +25,7 @@ for d in DATUM:
 
         df = pd.DataFrame(data=data_json)
 
-        df.to_json(f"./data/{p}/eldata_{d[:4]}-{d[5:7]}-{d[8:]}.json")
+        #df.to_json(f"./data/{p}/eldata_{d[:4]}-{d[5:7]}-{d[8:]}.json")
 
 
         
