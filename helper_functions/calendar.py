@@ -29,8 +29,14 @@ spark_df = spark.createDataFrame(df)
 spark_df.show()
 
 # COMMAND ----------
+# MAGIC %md 
+# MAGIC Ändra variabeln ```catalog````
+# COMMAND ----------
+catalog = 'your_catalog_name'
 
-spark_df.write.saveAsTable("emanuel_db.staging.calendar")
+# COMMAND ----------
+
+spark_df.write.saveAsTable(f"{catalog}.staging.calendar")
 
 # COMMAND ----------
 
