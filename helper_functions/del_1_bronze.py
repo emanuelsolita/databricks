@@ -13,6 +13,15 @@ from pyspark.sql.types import StructType,StructField, StringType, IntegerType, L
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC spark session
+
+# COMMAND ----------
+
+spark
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC elprisetjustnu.se har ett öppet API för att hämta el-data från de senaste månaderna.
 # MAGIC 
 # MAGIC Hämta eldata via API
