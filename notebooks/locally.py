@@ -1,8 +1,7 @@
 # Databricks notebook source
-
 import pandas as pd 
 import numpy as np 
-print('hej')
+
 # COMMAND ----------
 
 #columns = ["name","age"]
@@ -20,6 +19,14 @@ data = [{"SEK_per_kWh":0.82517,"EUR_per_kWh":0.07361,"EXR":11.210032,"time_start
 # COMMAND ----------
 
 df = spark.createDataFrame(data)
+
+# COMMAND ----------
+
+type(df)
+
+# COMMAND ----------
+
+df.printSchema()
 
 # COMMAND ----------
 

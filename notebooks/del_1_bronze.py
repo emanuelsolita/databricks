@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC 
+# MAGIC
 # MAGIC Första delen
 
 # COMMAND ----------
@@ -23,7 +23,7 @@ spark
 
 # MAGIC %md
 # MAGIC elprisetjustnu.se har ett öppet API för att hämta el-data från de senaste månaderna.
-# MAGIC 
+# MAGIC
 # MAGIC Hämta eldata via API
 # MAGIC GET https://www.elprisetjustnu.se/api/v1/prices/[ÅR]/[MÅNAD]-[DAG]_[PRISKLASS].json
 
@@ -67,14 +67,14 @@ spark
 
 # MAGIC %md
 # MAGIC Använd endpointen för att hämta historisk data. Tidigast tillängliga datum är 2022-10-26. 
-# MAGIC 
+# MAGIC
 # MAGIC Lämpliga paket i Python att använda:
-# MAGIC 
+# MAGIC
 # MAGIC - ```requests``` - API-anrop. [docs](https://requests.readthedocs.io/en/latest/)
 # MAGIC - ```pandas``` - Pandas DataFrame. [docs](https://pandas.pydata.org/docs/)
 # MAGIC - ```datetime``` - Datumhantering [docs](https://docs.python.org/3/library/datetime.html)
 # MAGIC - ```pyspark``` - Datahantering i spark. [docs](https://spark.apache.org/docs/3.1.3/api/python/index.html)
-# MAGIC 
+# MAGIC
 # MAGIC Skapa en funktion som loopar över en array med datum
 
 # COMMAND ----------
@@ -106,10 +106,18 @@ def fetch_data():
     
     return data
 
+def load_data():
+    return spark.table('emanuel_db.bronze.stg_elpris')
+    
+
 
 # COMMAND ----------
 
 data = fetch_data()
+
+# COMMAND ----------
+
+data
 
 # COMMAND ----------
 
@@ -145,6 +153,10 @@ spark_df = spark_df.withColumn("SEK_per_kWh",spark_df.SEK_per_kWh.cast(FloatType
 # COMMAND ----------
 
 spark_df.printSchema()
+
+# COMMAND ----------
+
+spark_df = load_data()
 
 # COMMAND ----------
 
@@ -188,7 +200,7 @@ spark_df.describe().show()
 
 # MAGIC %md
 # MAGIC Skriv data till direkt till en tabell
-# MAGIC 
+# MAGIC
 # MAGIC ```df.write.option("").mode("").saveAsTable("<catalog>.<schema>.<table>")```
 
 # COMMAND ----------
@@ -199,11 +211,11 @@ spark_df.write.option("overwriteSchema", True).mode("overwrite").saveAsTable('em
 
 # MAGIC %md
 # MAGIC Kika på tabellen du precis skapade
-# MAGIC 
+# MAGIC
 # MAGIC ```%sql select * from <catalog>.<schema>.<table>```
-# MAGIC 
+# MAGIC
 # MAGIC eller
-# MAGIC 
+# MAGIC
 # MAGIC ```spark.read.table(<catalog>.<schema>.<table>)```
 
 # COMMAND ----------
@@ -219,7 +231,12 @@ def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
     return s * t
 
 spark.udf.register("multiply", multiply)
-spark.sql("SELECT multiply(EUR_per_kWh,EXR) FROM emanuel_db.staging.stg_elpris").show()
+spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.staging.stg_elpris").show()
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from emanuel_db.staging.stg_elpris
 
 # COMMAND ----------
 
