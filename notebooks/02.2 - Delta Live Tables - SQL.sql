@@ -34,7 +34,7 @@ AS SELECT * FROM cloud_files("/databricks_academy/raw/elpriser/", "json", map("c
 
 -- COMMAND ----------
 
--- DBTITLE 1,Clean and anonymise User data
+-- DBTITLE 1,Clean el-data
 CREATE STREAMING LIVE TABLE elpriser (
   CONSTRAINT SEK_per_kWh_valid EXPECT (SEK_per_kWh IS NOT NULL) ON VIOLATION DROP ROW
 )
@@ -55,7 +55,7 @@ from STREAM(live.elpriser_bronze)
 -- MAGIC %md-sandbox
 -- MAGIC ### 3/ Aggregate and join data to create our ML features
 -- MAGIC <div style="float:right">
--- MAGIC   <img width="500px" src="../docs/dlt_flow_simple.png"/>
+-- MAGIC   <img width="500px" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/retail/resources/images/lakehouse-retail/lakehouse-retail-churn-de-small-3.png"/>
 -- MAGIC </div>
 -- MAGIC
 -- MAGIC We're now ready to create the features required for our Churn prediction.
@@ -70,8 +70,8 @@ from STREAM(live.elpriser_bronze)
 
 -- COMMAND ----------
 
-
 -- DBTITLE 1,Create the feature table
+
 CREATE LIVE TABLE view_elpriser
 COMMENT "Final table"
 AS 

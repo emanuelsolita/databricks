@@ -11,7 +11,7 @@ from pyspark.sql.functions import sha1, col, initcap, to_timestamp, to_date
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Berika data - Kalender
+# MAGIC ###Bli Familjär med pyspark
 
 # COMMAND ----------
 

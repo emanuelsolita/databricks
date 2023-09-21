@@ -144,34 +144,6 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 
 # COMMAND ----------
 
-# DBTITLE 1,Storing the raw data in "bronze" Delta tables, supporting schema evolution and incorrect data
-name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
-deltaTablesDirectory = '/Users/'+name+'/elpriser/'
-dbutils.fs.mkdirs(deltaTablesDirectory)
-
-database = 'emanuel_db'
-schema = 'bronze'
-table = 'elpriser_bronze'
-
-def ingest_folder(folder, data_format, table):
-  bronze_products = (spark.readStream
-                      .format("cloudFiles")
-                      .option("cloudFiles.format", data_format)
-                      .option("cloudFiles.inferColumnTypes", "true")
-                      .option("cloudFiles.schemaLocation",
-                              f"{deltaTablesDirectory}/schema/{table}") #Autoloader will automatically infer all the schema & evolution
-                      .load(folder))
-  return (bronze_products.writeStream
-            .option("checkpointLocation",
-                    f"{deltaTablesDirectory}/checkpoint/{table}") #exactly once delivery on Delta tables over restart/kill
-            .option("overwriteSchema", "true") #merge any new column dynamically
-            .trigger(once = True) #Remove for real time streaming
-            .table(table)) #Table will be created if we haven't specified the schema first
-  
-ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{table}').awaitTermination()
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC Skapa ett schema för datastrukturen
 
@@ -230,7 +202,8 @@ spark_df.describe().show()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa catalog ```%sql create catalog if not exists emanuel_db```
+# MAGIC ###Skapa catalog (Traditionellt - Database)
+# MAGIC ```%sql create catalog if not exists emanuel_db```
 
 # COMMAND ----------
 
@@ -240,7 +213,8 @@ spark_df.describe().show()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa schema (databas) ```%sql create schema if not exists <catalog>.bronze```
+# MAGIC ###Skapa databas (Traditionellt - Schema)
+# MAGIC ```%sql create schema if not exists <catalog>.bronze```
 
 # COMMAND ----------
 
@@ -271,8 +245,41 @@ spark_df.write.option("overwriteSchema", True).mode("overwrite").saveAsTable('em
 
 # COMMAND ----------
 
-# MAGIC %sql 
-# MAGIC select * from emanuel_db.bronze.stg_elpris
+# MAGIC %md
+# MAGIC ###Med Autoloader
+
+# COMMAND ----------
+
+# DBTITLE 1,Storing the raw data in "bronze" Delta tables, supporting schema evolution and incorrect data
+name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
+deltaTablesDirectory = '/Users/'+name+'/elpriser/'
+dbutils.fs.mkdirs(deltaTablesDirectory)
+
+database = 'emanuel_db'
+schema = 'bronze'
+table = 'elpriser_bronze'
+
+def ingest_folder(folder, data_format, table):
+  bronze_products = (spark.readStream
+                      .format("cloudFiles")
+                      .option("cloudFiles.format", data_format)
+                      .option("cloudFiles.inferColumnTypes", "true")
+                      .option("cloudFiles.schemaLocation",
+                              f"{deltaTablesDirectory}/schema/{table}") #Autoloader will automatically infer all the schema & evolution
+                      .load(folder))
+  return (bronze_products.writeStream
+            .option("checkpointLocation",
+                    f"{deltaTablesDirectory}/checkpoint/{table}") #exactly once delivery on Delta tables over restart/kill
+            .option("overwriteSchema", "true") #merge any new column dynamically
+            .trigger(once = True) #Remove for real time streaming
+            .table(table)) #Table will be created if we haven't specified the schema first
+  
+ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{table}').awaitTermination()
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from emanuel_db.bronze.elpris_bronze
 
 # COMMAND ----------
 
@@ -282,13 +289,4 @@ def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
     return s * t
 
 spark.udf.register("multiply", multiply)
-spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.staging.elpriser").show()
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from emanuel_db.staging.stg_elpris
-
-# COMMAND ----------
-
-
+spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.bronze.elpris_bronze").show()
