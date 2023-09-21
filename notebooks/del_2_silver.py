@@ -1,25 +1,22 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC Del 2 berika data
+# MAGIC ### Del 2 - Silver
 
 # COMMAND ----------
 
 import pandas as pd
 from pyspark.sql import functions as F
-
-# COMMAND ----------
-
-spark
+from pyspark.sql.functions import sha1, col, initcap, to_timestamp, to_date
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Berika data med calender data
+# MAGIC Berika data - Kalender
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.staging.calendar
+# MAGIC select * from emanuel_db.bronze.calendar_bronze
 
 # COMMAND ----------
 
@@ -27,24 +24,24 @@ spark_cal = _sqldf
 
 # COMMAND ----------
 
-spark_cal = spark_cal.withColumn('date_start', F.to_date(F.substring('date',1,10)))
+spark_cal = spark_cal.withColumn('date_start', to_date(col('date')))
 spark_cal.show()
 
 # COMMAND ----------
 
 # MAGIC %md 
 # MAGIC Läs in data som vi sparade i tidigare del 
-# MAGIC 
+# MAGIC
 # MAGIC ```%sql select * from <catalog>.<schema>.<table>```
-# MAGIC 
+# MAGIC
 # MAGIC eller 
-# MAGIC 
+# MAGIC
 # MAGIC ```spark.read.table("<catalog>.<schema>.<table>")```
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.bronze.stg_elpris
+# MAGIC select * from emanuel_db.bronze.elpriser_bronze
 
 # COMMAND ----------
 
@@ -62,7 +59,7 @@ spark_elpris = _sqldf
 
 # COMMAND ----------
 
-spark_elpris = spark_elpris.withColumn('date_start', F.to_date(F.substring('time_start',1,10)))
+spark_elpris = spark_elpris.withColumn('date_start', to_date(col('time_start')))
 spark_elpris.show()
 
 # COMMAND ----------
@@ -72,32 +69,8 @@ spark_elpris.count()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Addera kalender på eldata med join.
-# MAGIC 
-# MAGIC ```df_res = df1.join(<df2>, how='left',on=['key'])``` [docs](https://sparkbyexamples.com/pyspark/pyspark-join-explained-with-examples/)
-# MAGIC 
-# MAGIC Kontrollera att joinen har gått rätt till (med tex ```df_res.count()```)
-
-# COMMAND ----------
-
-spark_elpris_ber = spark_elpris.join(spark_cal, how='left',on=['date_start'])
-spark_elpris_ber.show()
-spark_elpris_ber.count()
-
-# COMMAND ----------
-
-spark_elpris_ber.printSchema()
-
-# COMMAND ----------
-
-spark_elpris_ber = spark_elpris_ber.withColumns({'EUR_per_kWh': spark_elpris_ber.EUR_per_kWh.cast('float'), 'SEK_per_kWh': spark_elpris_ber['SEK_per_kWh'].cast('float')})
-spark_elpris_ber.show()
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC Nu är vi klara med berikningen och vill spara vår nya DF i schemat silver
-# MAGIC 
+# MAGIC
 # MAGIC Använd ```spark.sql("<Query>")``` för att skapa schemat i din catalog
 
 # COMMAND ----------
@@ -111,15 +84,62 @@ spark.sql("create schema if not exists emanuel_db.silver")
 
 # COMMAND ----------
 
-catalog = 'emanuel_db'
-schema = 'silver'
-table_name = 'elpris_ber'
-spark_elpris_ber.write.saveAsTable(f"{catalog}.{schema}.{table_name}")
+# MAGIC %md
+# MAGIC ###Gör dessa transfomrationer med hjälp av ```spark.readStream```
 
 # COMMAND ----------
 
-spark.read.table(f"{catalog}.{schema}.{table_name}").show()
+# MAGIC %md
+# MAGIC ###Berika kalendern
 
 # COMMAND ----------
 
+name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
+deltaTablesDirectory = '/Users/'+name+'/elpriser/'
 
+database = 'emanuel_db'
+
+source_schema = 'bronze'
+source_table = 'calendar_bronze'
+
+target_schema = 'silver'
+target_table = 'calendar'
+
+(spark.readStream
+        .table(f'{database}.{source_schema}.{source_table}')
+        .withColumn("date_start", to_date(col("date")))
+      .writeStream
+        .option("checkpointLocation", f"{deltaTablesDirectory}/checkpoint/calendar")
+        .trigger(once=True)
+        .table(f"{database}.{target_schema}.{target_table}").awaitTermination())
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ###Berika el-data
+
+# COMMAND ----------
+
+database = 'emanuel_db'
+
+source_schema = 'bronze'
+source_table = 'elpriser_bronze'
+
+target_schema = 'silver'
+target_table = 'elpriser'
+
+(spark.readStream
+        .table(f'{database}.{source_schema}.{source_table}')
+        .withColumnRenamed("EXR", "exchange_rate")
+        .withColumn("date_start", to_date(col("time_start")))
+        .withColumn("time_end", to_timestamp(col("time_end")))
+        .withColumn("time_start", to_timestamp(col("time_start")))
+        .drop(col("_rescued_data"))
+      .writeStream
+        .option("checkpointLocation", f"{deltaTablesDirectory}/checkpoint/elpriser")
+        .trigger(once=True)
+        .table(f"{database}.{target_schema}.{target_table}").awaitTermination())
+
+# COMMAND ----------
+
+spark.read.table(f"{database}.{schema}.{table_name}").show()

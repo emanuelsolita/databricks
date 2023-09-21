@@ -15,7 +15,7 @@ import pandas as pd
 
 catalog = 'emanuel_db'
 source_schema = 'silver'
-source_table_name = 'elpris_ber'
+source_table_name = 'elpriserr'
 
 # COMMAND ----------
 
@@ -48,35 +48,48 @@ target_table_name = 'view_elpris'
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC create or replace view emanuel_db.gold.view_elpris
-# MAGIC as 
-# MAGIC select 
-# MAGIC   date_start,
-# MAGIC   SEK_per_kWh,
-# MAGIC   EUR_per_kWh,
-# MAGIC   EXR,
-# MAGIC   elzoon,
-# MAGIC   time_start,
-# MAGIC   time_end,
-# MAGIC   Date,
-# MAGIC   Day_Name,
-# MAGIC   Day,
-# MAGIC   Week,
-# MAGIC   Month_Name,
-# MAGIC   Month,
-# MAGIC   Quarter,
-# MAGIC   Year,
-# MAGIC   Year_half,
-# MAGIC   FY,
-# MAGIC   EndOfMonth
-# MAGIC 
-# MAGIC from emanuel_db.silver.elpris_ber
+database = 'emanuel_db'
+
+source_schema = 'silver'
+source_table = 'elpriser'
+
+target_schema = 'gold'
+target_view = 'view_elpriser'
+
+spark.sql(
+  f"""
+    CREATE OR REPLACE view {database}.{target_schema}.{target_view} AS
+        SELECT
+            date_start,
+            SEK_per_kWh,
+            EUR_per_kWh,
+            exchange_rate,
+            elzon,
+            time_start,
+            time_end,
+            Date,
+            Day_Name,
+            Day,
+            Week,
+            Month_Name,
+            Month,
+            Quarter,
+            Year,
+            Year_half,
+            FY,
+            EndOfMonth
+        FROM {database}.{source_schema}.{source_table} el
+        left JOIN 
+        (select *, to_date(date) as date_start_cal from emanuel_db.staging.calendar) cal
+        on el.date_start = cal.date_start_cal
+  """
+)
+
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.gold.view_elpris
+# MAGIC select * from emanuel_db.gold.view_elpriser
 
 # COMMAND ----------
 

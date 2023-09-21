@@ -79,9 +79,18 @@ spark
 
 # COMMAND ----------
 
+# MAGIC %run ./helper_functions/calendar
+
+# COMMAND ----------
+
+database = 'emanuel_db'
+create_calendar(database=database)
+
+# COMMAND ----------
+
 PRISKLASS = ['SE1','SE2','SE3','SE4']
 end_date = date.today().strftime("%Y-%m-%d")
-DATUM = pd.date_range(start='2022-10-26', end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
+DATUM = pd.date_range(start='2022-12-01', end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
 DATUM
 
 # COMMAND ----------
@@ -92,7 +101,15 @@ DATUM
 # COMMAND ----------
 
 name = 'emanuel'
+elpriserRawDataDirectory = 'databricks_academy/raw/elpriser/'
+
+def cleanup_folder(path):
+  for f in dbutils.fs.ls(path):
+    if f.name.startswith('_committed') or f.name.startswith('_started') or f.name.startswith('_SUCCESS') :
+      dbutils.fs.rm(f.path)
+
 def fetch_data():
+
     data = []
     for p in PRISKLASS:
         for d in DATUM:
@@ -101,13 +118,18 @@ def fetch_data():
             response = requests.get(url=api_url)
             print(response.status_code)
             data_json = response.json()
-            data_json = [dict(item, **{'elzoon': p}) for item in data_json]
+            data_json = [dict(item, **{'elzon': p}) for item in data_json]
             data += data_json
-    
+
+    elpris = spark.createDataFrame(sc.parallelize(data))
+    elpris = elpris.cache()
+    elpris.repartition(10).write.format("json").mode("overwrite").option("overwriteSchema", True).save(elpriserRawDataDirectory)
+    cleanup_folder(elpriserRawDataDirectory)
+
     return data
 
 def load_data():
-    return spark.table('emanuel_db.bronze.stg_elpris')
+    return spark.table('emanuel_db.bronze.elpriser')
     
 
 
@@ -117,7 +139,36 @@ data = fetch_data()
 
 # COMMAND ----------
 
-data
+# Listing the files under the directory
+for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
+
+# COMMAND ----------
+
+# DBTITLE 1,Storing the raw data in "bronze" Delta tables, supporting schema evolution and incorrect data
+name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
+deltaTablesDirectory = '/Users/'+name+'/elpriser/'
+dbutils.fs.mkdirs(deltaTablesDirectory)
+
+database = 'emanuel_db'
+schema = 'bronze'
+table = 'elpriser_bronze'
+
+def ingest_folder(folder, data_format, table):
+  bronze_products = (spark.readStream
+                      .format("cloudFiles")
+                      .option("cloudFiles.format", data_format)
+                      .option("cloudFiles.inferColumnTypes", "true")
+                      .option("cloudFiles.schemaLocation",
+                              f"{deltaTablesDirectory}/schema/{table}") #Autoloader will automatically infer all the schema & evolution
+                      .load(folder))
+  return (bronze_products.writeStream
+            .option("checkpointLocation",
+                    f"{deltaTablesDirectory}/checkpoint/{table}") #exactly once delivery on Delta tables over restart/kill
+            .option("overwriteSchema", "true") #merge any new column dynamically
+            .trigger(once = True) #Remove for real time streaming
+            .table(table)) #Table will be created if we haven't specified the schema first
+  
+ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{table}').awaitTermination()
 
 # COMMAND ----------
 
@@ -231,7 +282,7 @@ def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
     return s * t
 
 spark.udf.register("multiply", multiply)
-spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.staging.stg_elpris").show()
+spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.staging.elpriser").show()
 
 # COMMAND ----------
 
