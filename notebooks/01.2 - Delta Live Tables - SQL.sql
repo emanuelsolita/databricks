@@ -55,7 +55,7 @@ from STREAM(live.elpriser_bronze)
 -- MAGIC %md-sandbox
 -- MAGIC ### 3/ Aggregate and join data to create our ML features
 -- MAGIC <div style="float:right">
--- MAGIC   <img width="500px" src="https://github.com/emanuelsolita/databricks-template/blob/main/docs/dlt_flow_simple.png"/>
+-- MAGIC   <img width="500px" src="https://github.com/emanuelsolita/databricks/blob/rework/docs/dlt_flow_simple.png"/>
 -- MAGIC </div>
 -- MAGIC
 -- MAGIC We're now ready to create the features required for our Churn prediction.
