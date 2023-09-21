@@ -17,7 +17,8 @@ from pyspark.sql.functions import sha1, col, initcap, to_timestamp, to_date
 
 # COMMAND ----------
 
-spark.sql("create schema if not exists emanuel_db.silver")
+database = 'emanuel_db'
+spark.sql(f"create schema if not exists {database}.silver")
 
 # COMMAND ----------
 
@@ -39,8 +40,6 @@ spark.sql("create schema if not exists emanuel_db.silver")
 name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
 deltaTablesDirectory = '/Users/'+name+'/elpriser/'
 
-database = 'emanuel_db'
-
 source_schema = 'bronze'
 source_table = 'calendar_bronze'
 
@@ -61,8 +60,6 @@ target_table = 'calendar'
 # MAGIC ###Berika el-data
 
 # COMMAND ----------
-
-database = 'emanuel_db'
 
 source_schema = 'bronze'
 source_table = 'elpriser_bronze'

@@ -151,7 +151,7 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC create catalog if not exists emanuel_db
+# MAGIC create catalog if not exists <database>
 
 # COMMAND ----------
 
@@ -162,7 +162,7 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 # COMMAND ----------
 
 # MAGIC %sql 
-# MAGIC create schema if not exists emanuel_db.bronze;
+# MAGIC create schema if not exists <database>.bronze;
 
 # COMMAND ----------
 
@@ -176,7 +176,6 @@ name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext(
 deltaTablesDirectory = '/Users/'+name+'/elpriser/'
 dbutils.fs.mkdirs(deltaTablesDirectory)
 
-database = 'emanuel_db'
 schema = 'bronze'
 table = 'elpriser_bronze'
 
@@ -200,4 +199,4 @@ ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{tabl
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.bronze.elpris_bronze
+# MAGIC select * from <database>.bronze.elpris_bronze

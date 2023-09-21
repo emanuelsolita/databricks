@@ -29,13 +29,13 @@ import pandas as pd
 
 # COMMAND ----------
 
-catalog = 'emanuel_db'
+database = 'emanuel_db'
 source_schema = 'silver'
 source_table_name = 'elpriser'
 
 # COMMAND ----------
 
-spark_el = spark.read.table(f"{catalog}.{source_schema}.{source_table_name}")
+spark_el = spark.read.table(f"{database}.{source_schema}.{source_table_name}")
 display(spark_el)
 
 # COMMAND ----------
@@ -68,8 +68,7 @@ spark_cal = _sqldf
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC create schema if not exists emanuel_db.gold
+spark.sql("create schema if not exists {database}.gold")
 
 # COMMAND ----------
 
