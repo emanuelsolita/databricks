@@ -1,41 +1,5 @@
 # Databricks notebook source
 # MAGIC %md-sandbox
-# MAGIC # Data engineering with Databricks
-# MAGIC
-# MAGIC Building a C360 database requires to ingest multiple datasources.  
-# MAGIC
-# MAGIC It's a complex process requiring batch loads and streaming ingestion to support real-time insights, used for personalization and marketing targeting among other.
-# MAGIC
-# MAGIC Ingesting, transforming and cleaning data to create clean SQL tables for our downstream user (Data Analysts and Data Scientists) is complex.
-# MAGIC
-# MAGIC <link href="https://fonts.googleapis.com/css?family=DM Sans" rel="stylesheet"/>
-# MAGIC <div style="width:300px; text-align: center; float: right; margin: 30px 60px 10px 10px;  font-family: 'DM Sans'">
-# MAGIC   <div style="height: 250px; width: 300px;  display: table-cell; vertical-align: middle; border-radius: 50%; border: 25px solid #fcba33ff;">
-# MAGIC     <div style="font-size: 70px;  color: #70c4ab; font-weight: bold">
-# MAGIC       73%
-# MAGIC     </div>
-# MAGIC     <div style="color: #1b5162;padding: 0px 30px 0px 30px;">of enterprise data goes unused for analytics and decision making</div>
-# MAGIC   </div>
-# MAGIC   <div style="color: #bfbfbf; padding-top: 5px">Source: Forrester</div>
-# MAGIC </div>
-# MAGIC
-# MAGIC <br>
-# MAGIC
-# MAGIC ## <img src="https://github.com/databricks-demos/dbdemos-resources/raw/main/images/de.png" style="float:left; margin: -35px 0px 0px 0px" width="80px"> John, as Data engineer, spends immense time….
-# MAGIC
-# MAGIC
-# MAGIC * Hand-coding data ingestion & transformations and dealing with technical challenges:<br>
-# MAGIC   *Supporting streaming and batch, handling concurrent operations, small files issues, GDPR requirements, complex DAG dependencies...*<br><br>
-# MAGIC * Building custom frameworks to enforce quality and tests<br><br>
-# MAGIC * Building and maintaining scalable infrastructure, with observability and monitoring<br><br>
-# MAGIC * Managing incompatible governance models from different systems
-# MAGIC <br style="clear: both">
-# MAGIC
-# MAGIC This results in **operational complexity** and overhead, requiring expert profile and ultimatly **putting data projects at risk**.
-
-# COMMAND ----------
-
-# MAGIC %md-sandbox
 # MAGIC # Simplify Ingestion and Transformation with Delta Live Tables
 # MAGIC
 # MAGIC <img style="float: right" width="500px" src="https://github.com/databricks-demos/dbdemos-resources/raw/main/images/retail/lakehouse-churn/lakehouse-retail-c360-churn-1.png" />
@@ -105,13 +69,12 @@
 # MAGIC ### Examine the source.
 # MAGIC A DLT pipeline can be implemented either in SQL or in Python.
 # MAGIC * [DLT pipeline definition in SQL]($./01.2 - Delta Live Tables - SQL)
-# MAGIC * [DLT pipeline definition in Python]($./01.2 - Delta Live Tables - Python)
 # MAGIC
 # MAGIC ### Define the pipeline
 # MAGIC Use the UI to achieve that:
 # MAGIC * Go to **Workflows / Delta Live Tables / Create Pipeline**
-# MAGIC * Specify **churn_data_pipeline** as the name of the pipeline
-# MAGIC * As a source specify **one** of the above notebooks. **Either** the SQL or the Python one would work.
+# MAGIC * Specify a name of the pipeline
+# MAGIC * As a source specify **SQL** of the above notebooks.
 # MAGIC * Specify the parameters for the DLT job with the values below:
 
 # COMMAND ----------
@@ -132,23 +95,23 @@ print("Specify the following storage location for the DLT pipeline tables:\n" + 
 
 # COMMAND ----------
 
-# DBTITLE 1,Count the rows in the churn_features table
-sqlStatement = "select count(*) from hive_metastore." + databaseForDLT + ".churn_features"
+# DBTITLE 1,Count any table
+sqlStatement = "select count(*) from <table_name>"
 print("Executing:\n" + sqlStatement)
 display(spark.sql(sqlStatement))
 
 # COMMAND ----------
 
-# DBTITLE 1,Retrieve the table details
+# DBTITLE 1,Describe table
 # Scroll the output to verify the storage location of the table
-sqlStatement = "DESCRIBE EXTENDED hive_metastore." + databaseForDLT + ".churn_features"
+sqlStatement = "DESCRIBE EXTENDED <table_name>"
 print("Executing:\n" + sqlStatement)
 display(spark.sql(sqlStatement))
 
 # COMMAND ----------
 
 # DBTITLE 1,Retrieve the table history
-sqlStatement = "DESCRIBE HISTORY hive_metastore." + databaseForDLT + ".churn_features"
+sqlStatement = "DESCRIBE HISTORY <table_name>"
 print("Executing:\n" + sqlStatement)
 display(spark.sql(sqlStatement))
 
@@ -160,20 +123,14 @@ display(spark.sql(sqlStatement))
 
 # COMMAND ----------
 
-# DBTITLE 1,Count the rows in the churn_features table again. It should be the same number
-sqlStatement = "select count(*) from hive_metastore." + databaseForDLT + ".churn_features"
+# DBTITLE 1,Count the rows in the same table again. It should be the same number
+sqlStatement = "select count(*) from <table_name>"
 print("Executing:\n" + sqlStatement)
 display(spark.sql(sqlStatement))
 
 # COMMAND ----------
 
 # DBTITLE 1,Retrieve the table history. There is an additional entry now
-sqlStatement = "DESCRIBE HISTORY hive_metastore." + databaseForDLT + ".churn_features"
+sqlStatement = "DESCRIBE HISTORY <table_name>"
 print("Executing:\n" + sqlStatement)
 display(spark.sql(sqlStatement))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Next up
-# MAGIC [Build and train a Machine Learning model]($./02 - Machine Learning with MLflow)

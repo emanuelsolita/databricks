@@ -11,65 +11,7 @@ from pyspark.sql.functions import sha1, col, initcap, to_timestamp, to_date
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ###Bli Familjär med pyspark
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from emanuel_db.bronze.calendar_bronze
-
-# COMMAND ----------
-
-spark_cal = _sqldf
-
-# COMMAND ----------
-
-spark_cal = spark_cal.withColumn('date_start', to_date(col('date')))
-spark_cal.show()
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC Läs in data som vi sparade i tidigare del 
-# MAGIC
-# MAGIC ```%sql select * from <catalog>.<schema>.<table>```
-# MAGIC
-# MAGIC eller 
-# MAGIC
-# MAGIC ```spark.read.table("<catalog>.<schema>.<table>")```
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from emanuel_db.bronze.elpriser_bronze
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC **Notera** att resultatet från SQL-frågan sparas i variabeln ```_sqldf```när man exekvera en SQL fråga med ```%sql select ...```
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Skriv resultatet till en bestämd variabel föra att inte skriva över den senare
-
-# COMMAND ----------
-
-spark_elpris = _sqldf 
-
-# COMMAND ----------
-
-spark_elpris = spark_elpris.withColumn('date_start', to_date(col('time_start')))
-spark_elpris.show()
-
-# COMMAND ----------
-
-spark_elpris.count()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Nu är vi klara med berikningen och vill spara vår nya DF i schemat silver
+# MAGIC ###Skapa schemat Silver
 # MAGIC
 # MAGIC Använd ```spark.sql("<Query>")``` för att skapa schemat i din catalog
 

@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC Sista delen i vår "Pipeline" - Gold
+# MAGIC ##Sista delen i vår "Pipeline" - Gold
 
 # COMMAND ----------
 
@@ -8,28 +8,63 @@ import pandas as pd
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ##Här vill vi joina elpris och kalender
+
+# COMMAND ----------
+
 # MAGIC %md 
-# MAGIC Läs in vår berikade tabell
+# MAGIC ###Läs in våra tabeller från silver för att få en överblick
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC Läs in data som vi sparade i tidigare del 
+# MAGIC
+# MAGIC ```%sql select * from <catalog>.<schema>.<table>```
+# MAGIC
+# MAGIC eller 
+# MAGIC
+# MAGIC ```spark.read.table("<catalog>.<schema>.<table>")```
 
 # COMMAND ----------
 
 catalog = 'emanuel_db'
 source_schema = 'silver'
-source_table_name = 'elpriserr'
+source_table_name = 'elpriser'
 
 # COMMAND ----------
 
-spark_df = spark.read.table(f"{catalog}.{source_schema}.{source_table_name}")
-display(spark_df)
+spark_el = spark.read.table(f"{catalog}.{source_schema}.{source_table_name}")
+display(spark_el)
 
 # COMMAND ----------
 
-spark_df.columns
+spark_el.columns
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa vårt nya schema **Gold**
+# MAGIC ###Ladda in Kalendern
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from emanuel_db.silver.calendar
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **Notera** att resultatet från SQL-frågan sparas i variabeln ```_sqldf```när man exekvera en SQL fråga med ```%sql select ...```
+
+# COMMAND ----------
+
+spark_cal = _sqldf
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Skapa vårt nya schema **Gold**
 
 # COMMAND ----------
 
@@ -39,12 +74,7 @@ spark_df.columns
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC Skapa en vy över tabellen
-
-# COMMAND ----------
-
-target_schema = 'gold'
-target_table_name = 'view_elpris'
+# MAGIC ###Skapa en vy över tabellerna
 
 # COMMAND ----------
 
