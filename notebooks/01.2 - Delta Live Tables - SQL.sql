@@ -70,6 +70,7 @@ from STREAM(live.elpriser_bronze)
 
 -- COMMAND ----------
 
+
 -- DBTITLE 1,Create the feature table
 CREATE LIVE TABLE view_elpriser
 COMMENT "Final table"
