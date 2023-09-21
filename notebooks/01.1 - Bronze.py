@@ -168,10 +168,12 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 
 # MAGIC %md
 # MAGIC ###Med Autoloader
+# MAGIC
+# MAGIC Ingest data med Autoloader.
+# MAGIC ```.readStream``` används för inkrementell data laddning (streaming) - Spark bestämmer vilken ny data som inte ännu har processats. 
 
 # COMMAND ----------
 
-# DBTITLE 1,Storing the raw data in "bronze" Delta tables, supporting schema evolution and incorrect data
 name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
 deltaTablesDirectory = '/Users/'+name+'/elpriser/'
 dbutils.fs.mkdirs(deltaTablesDirectory)
