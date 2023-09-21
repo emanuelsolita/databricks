@@ -145,63 +145,6 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa ett schema för datastrukturen
-
-# COMMAND ----------
-
-schema = StructType([ \
-    StructField("SEK_per_kWh",StringType(),True), \
-    StructField("EUR_per_kWh",StringType(),True), \
-    StructField("EXR",FloatType(),True), \
-    StructField("time_start", StringType(), True), \
-    StructField("time_end", StringType(), True), \
-    StructField("elzoon", StringType(), True) \
-  ])
-type(schema)
-
-# COMMAND ----------
-
-spark_df = spark.createDataFrame(data=data, schema=schema)
-display(spark_df)
-
-# COMMAND ----------
-
-spark_df = spark_df.withColumn("SEK_per_kWh",spark_df.SEK_per_kWh.cast(FloatType()))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Inspektera schema med ```df.printSchema()```
-
-# COMMAND ----------
-
-spark_df.printSchema()
-
-# COMMAND ----------
-
-spark_df = load_data()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Visa data i dataframen i spark ```display(df)``` eller ```df.show()```
-
-# COMMAND ----------
-
-display(spark_df)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Få en summering dataframen genom ```df.describe().show()```
-
-# COMMAND ----------
-
-spark_df.describe().show()
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ###Skapa catalog (Traditionellt - Database)
 # MAGIC ```%sql create catalog if not exists emanuel_db```
 
@@ -220,28 +163,6 @@ spark_df.describe().show()
 
 # MAGIC %sql 
 # MAGIC create schema if not exists emanuel_db.bronze;
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Skriv data till direkt till en tabell
-# MAGIC
-# MAGIC ```df.write.option("").mode("").saveAsTable("<catalog>.<schema>.<table>")```
-
-# COMMAND ----------
-
-spark_df.write.option("overwriteSchema", True).mode("overwrite").saveAsTable('emanuel_db.bronze.stg_elpris') #{path}/{current_date}/")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Kika på tabellen du precis skapade
-# MAGIC
-# MAGIC ```%sql select * from <catalog>.<schema>.<table>```
-# MAGIC
-# MAGIC eller
-# MAGIC
-# MAGIC ```spark.read.table(<catalog>.<schema>.<table>)```
 
 # COMMAND ----------
 
@@ -280,13 +201,3 @@ ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{tabl
 
 # MAGIC %sql
 # MAGIC select * from emanuel_db.bronze.elpris_bronze
-
-# COMMAND ----------
-
-from pyspark.sql.functions import pandas_udf
-@pandas_udf("float")
-def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
-    return s * t
-
-spark.udf.register("multiply", multiply)
-spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.bronze.elpris_bronze").show()

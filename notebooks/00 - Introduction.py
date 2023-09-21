@@ -71,6 +71,13 @@ display(spark_df)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Skriv data till direkt till en tabell
+# MAGIC
+# MAGIC ```df.write.option("").mode("").saveAsTable("<catalog>.<schema>.<table>")```
+
+# COMMAND ----------
+
 spark_df.write.mode("overwrite").option("overwriteSchema", True).saveAsTable("fake_data")
 
 # COMMAND ----------
@@ -117,4 +124,10 @@ df.describe().show()
 
 # COMMAND ----------
 
+from pyspark.sql.functions import pandas_udf
+@pandas_udf("float")
+def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
+    return s * t
 
+spark.udf.register("multiply", multiply)
+spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.bronze.elpris_bronze").show()
