@@ -79,9 +79,18 @@ spark
 
 # COMMAND ----------
 
+# MAGIC %run ./helper_functions/calendar
+
+# COMMAND ----------
+
+database = 'emanuel_db'
+create_calendar(database=database)
+
+# COMMAND ----------
+
 PRISKLASS = ['SE1','SE2','SE3','SE4']
 end_date = date.today().strftime("%Y-%m-%d")
-DATUM = pd.date_range(start='2022-10-26', end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
+DATUM = pd.date_range(start='2022-12-01', end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
 DATUM
 
 # COMMAND ----------
@@ -92,7 +101,15 @@ DATUM
 # COMMAND ----------
 
 name = 'emanuel'
+elpriserRawDataDirectory = 'databricks_academy/raw/elpriser/'
+
+def cleanup_folder(path):
+  for f in dbutils.fs.ls(path):
+    if f.name.startswith('_committed') or f.name.startswith('_started') or f.name.startswith('_SUCCESS') :
+      dbutils.fs.rm(f.path)
+
 def fetch_data():
+
     data = []
     for p in PRISKLASS:
         for d in DATUM:
@@ -101,13 +118,18 @@ def fetch_data():
             response = requests.get(url=api_url)
             print(response.status_code)
             data_json = response.json()
-            data_json = [dict(item, **{'elzoon': p}) for item in data_json]
+            data_json = [dict(item, **{'elzon': p}) for item in data_json]
             data += data_json
-    
+
+    elpris = spark.createDataFrame(sc.parallelize(data))
+    elpris = elpris.cache()
+    elpris.repartition(10).write.format("json").mode("overwrite").option("overwriteSchema", True).save(elpriserRawDataDirectory)
+    cleanup_folder(elpriserRawDataDirectory)
+
     return data
 
 def load_data():
-    return spark.table('emanuel_db.bronze.stg_elpris')
+    return spark.table('emanuel_db.bronze.elpriser')
     
 
 
@@ -117,127 +139,66 @@ data = fetch_data()
 
 # COMMAND ----------
 
-data
+# Listing the files under the directory
+for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa ett schema för datastrukturen
-
-# COMMAND ----------
-
-schema = StructType([ \
-    StructField("SEK_per_kWh",StringType(),True), \
-    StructField("EUR_per_kWh",StringType(),True), \
-    StructField("EXR",FloatType(),True), \
-    StructField("time_start", StringType(), True), \
-    StructField("time_end", StringType(), True), \
-    StructField("elzoon", StringType(), True) \
-  ])
-type(schema)
-
-# COMMAND ----------
-
-spark_df = spark.createDataFrame(data=data, schema=schema)
-display(spark_df)
-
-# COMMAND ----------
-
-spark_df = spark_df.withColumn("SEK_per_kWh",spark_df.SEK_per_kWh.cast(FloatType()))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Inspektera schema med ```df.printSchema()```
-
-# COMMAND ----------
-
-spark_df.printSchema()
-
-# COMMAND ----------
-
-spark_df = load_data()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Visa data i dataframen i spark ```display(df)``` eller ```df.show()```
-
-# COMMAND ----------
-
-display(spark_df)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Få en summering dataframen genom ```df.describe().show()```
-
-# COMMAND ----------
-
-spark_df.describe().show()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Skapa catalog ```%sql create catalog if not exists emanuel_db```
+# MAGIC ###Skapa catalog (Traditionellt - Database)
+# MAGIC ```%sql create catalog if not exists emanuel_db```
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC create catalog if not exists emanuel_db
+# MAGIC create catalog if not exists <database>
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skapa schema (databas) ```%sql create schema if not exists <catalog>.bronze```
+# MAGIC ###Skapa databas (Traditionellt - Schema)
+# MAGIC ```%sql create schema if not exists <catalog>.bronze```
 
 # COMMAND ----------
 
 # MAGIC %sql 
-# MAGIC create schema if not exists emanuel_db.bronze;
+# MAGIC create schema if not exists <database>.bronze;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Skriv data till direkt till en tabell
+# MAGIC ###Med Autoloader
 # MAGIC
-# MAGIC ```df.write.option("").mode("").saveAsTable("<catalog>.<schema>.<table>")```
+# MAGIC Ingest data med Autoloader.
+# MAGIC ```.readStream``` används för inkrementell data laddning (streaming) - Spark bestämmer vilken ny data som inte ännu har processats. 
 
 # COMMAND ----------
 
-spark_df.write.option("overwriteSchema", True).mode("overwrite").saveAsTable('emanuel_db.bronze.stg_elpris') #{path}/{current_date}/")
+name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])
+deltaTablesDirectory = '/Users/'+name+'/elpriser/'
+dbutils.fs.mkdirs(deltaTablesDirectory)
 
-# COMMAND ----------
+schema = 'bronze'
+table = 'elpriser_bronze'
 
-# MAGIC %md
-# MAGIC Kika på tabellen du precis skapade
-# MAGIC
-# MAGIC ```%sql select * from <catalog>.<schema>.<table>```
-# MAGIC
-# MAGIC eller
-# MAGIC
-# MAGIC ```spark.read.table(<catalog>.<schema>.<table>)```
-
-# COMMAND ----------
-
-# MAGIC %sql 
-# MAGIC select * from emanuel_db.bronze.stg_elpris
-
-# COMMAND ----------
-
-from pyspark.sql.functions import pandas_udf
-@pandas_udf("float")
-def multiply(s: pd.Series, t: pd.Series) -> pd.Series:
-    return s * t
-
-spark.udf.register("multiply", multiply)
-spark.sql("SELECT SEK_per_kWh, EXR, multiply(SEK_per_kWh,EXR) FROM emanuel_db.staging.stg_elpris").show()
+def ingest_folder(folder, data_format, table):
+  bronze_products = (spark.readStream
+                      .format("cloudFiles")
+                      .option("cloudFiles.format", data_format)
+                      .option("cloudFiles.inferColumnTypes", "true")
+                      .option("cloudFiles.schemaLocation",
+                              f"{deltaTablesDirectory}/schema/{table}") #Autoloader will automatically infer all the schema & evolution
+                      .load(folder))
+  return (bronze_products.writeStream
+            .option("checkpointLocation",
+                    f"{deltaTablesDirectory}/checkpoint/{table}") #exactly once delivery on Delta tables over restart/kill
+            .option("overwriteSchema", "true") #merge any new column dynamically
+            .trigger(once = True) #Remove for real time streaming
+            .table(table)) #Table will be created if we haven't specified the schema first
+  
+ingest_folder('/'+elpriserRawDataDirectory, 'json',  f'{database}.{schema}.{table}').awaitTermination()
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.staging.stg_elpris
-
-# COMMAND ----------
-
-
+# MAGIC select * from <database>.bronze.elpris_bronze
