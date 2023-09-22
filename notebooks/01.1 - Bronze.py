@@ -82,15 +82,24 @@ spark
 # MAGIC %run ./helper_functions/calendar
 
 # COMMAND ----------
+elpriserRawDataDirectory = 'databricks_academy/raw/elpriser/'
 
-database = 'emanuel_db'
+def cleanup_folder(path):
+  for f in dbutils.fs.ls(path):
+    if f.name.startswith('_committed') or f.name.startswith('_started') or f.name.startswith('_SUCCESS') :
+      dbutils.fs.rm(f.path)
+
+# Ändra här
+name = <name>
+database = <database_name>
 create_calendar(database=database)
 
 # COMMAND ----------
 
 PRISKLASS = ['SE1','SE2','SE3','SE4']
-end_date = date.today().strftime("%Y-%m-%d")
-DATUM = pd.date_range(start='2022-12-01', end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
+end_date = ...
+start_date = ...
+DATUM = pd.date_range(start=start_date, end=end_date).strftime("%Y-%m-%d") # Format: YYYY-MM-DD
 DATUM
 
 # COMMAND ----------
@@ -99,14 +108,6 @@ DATUM
 # MAGIC skapa en funktion som loopar över datumen-arrayen definerad ovan
 
 # COMMAND ----------
-
-name = 'emanuel'
-elpriserRawDataDirectory = 'databricks_academy/raw/elpriser/'
-
-def cleanup_folder(path):
-  for f in dbutils.fs.ls(path):
-    if f.name.startswith('_committed') or f.name.startswith('_started') or f.name.startswith('_SUCCESS') :
-      dbutils.fs.rm(f.path)
 
 def fetch_data():
 
@@ -126,11 +127,7 @@ def fetch_data():
     elpris.repartition(10).write.format("json").mode("overwrite").option("overwriteSchema", True).save(elpriserRawDataDirectory)
     cleanup_folder(elpriserRawDataDirectory)
 
-    return data
-
-def load_data():
-    return spark.table('emanuel_db.bronze.elpriser')
-    
+    return data    
 
 
 # COMMAND ----------
@@ -139,7 +136,7 @@ data = fetch_data()
 
 # COMMAND ----------
 
-# Listing the files under the directory
+# Lista filer mappen
 for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 
 # COMMAND ----------
@@ -171,7 +168,7 @@ for fileInfo in dbutils.fs.ls(elpriserRawDataDirectory): print(fileInfo.name)
 # MAGIC
 # MAGIC Ingest data med Autoloader.
 # MAGIC ```.readStream``` används för inkrementell data laddning (streaming) - Spark bestämmer vilken ny data som inte ännu har processats. 
-
+# MAGIC https://docs.databricks.com/en/structured-streaming/delta-lake.html 
 # COMMAND ----------
 
 name = "_".join(dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user').split("@")[0].split(".")[0:2])

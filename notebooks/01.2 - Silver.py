@@ -17,7 +17,7 @@ from pyspark.sql.functions import sha1, col, initcap, to_timestamp, to_date
 
 # COMMAND ----------
 
-database = 'emanuel_db'
+database = <database
 spark.sql(f"create schema if not exists {database}.silver")
 
 # COMMAND ----------
@@ -78,6 +78,11 @@ target_table = 'elpriser'
         .option("checkpointLocation", f"{deltaTablesDirectory}/checkpoint/elpriser")
         .trigger(once=True)
         .table(f"{database}.{target_schema}.{target_table}").awaitTermination())
+
+# COMMAND ----------
+# MAGIC %md Checkpoint location
+# COMMAND ----------
+for fileInfo in dbutils.fs.ls(deltaTablesDirectory+'/checkpoint/elpriser'): print(fileInfo.name)
 
 # COMMAND ----------
 

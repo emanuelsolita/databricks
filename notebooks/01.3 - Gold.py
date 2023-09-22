@@ -29,7 +29,7 @@ import pandas as pd
 
 # COMMAND ----------
 
-database = 'emanuel_db'
+database = <database>
 source_schema = 'silver'
 source_table_name = 'elpriser'
 
@@ -77,8 +77,6 @@ spark.sql("create schema if not exists {database}.gold")
 
 # COMMAND ----------
 
-database = 'emanuel_db'
-
 source_schema = 'silver'
 source_table = 'elpriser'
 
@@ -118,7 +116,7 @@ spark.sql(
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from emanuel_db.gold.view_elpriser
+# MAGIC select * from <database>.gold.view_elpriser
 
 # COMMAND ----------
 
